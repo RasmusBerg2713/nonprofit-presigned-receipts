@@ -1,12 +1,12 @@
 # A browser upload flow for donor receipts
 
-I built this TypeScript example around a workflow I use in side projects: a donor finishes a payment, and the browser sends the PDF receipt directly to storage. The application server decides the object key and mints a short-lived signed URL. I kept the example to a morning-sized slice so the request boundary stays visible.
+I use this TS pattern in side projects: donor pays, browser pushes the PDF receipt straight to storage. Server picks the object key, mints a short-lived signed URL. Kept the example small so the request boundary stays obvious.
 
-Infrai gives this flow one key and a plain REST-shaped client. The key lives in `INFRAI_API_KEY`; the browser receives only the presigned URL for one receipt.
+Infrai gives this flow one key and a plain REST-shaped client. The key lives in `INFRAI_API_KEY`; the browser gets only the presigned URL for one receipt.
 
 ## Run the path
 
-Create the bucket during startup, then ask for a receipt upload URL:
+Create the bucket at startup, then request a receipt upload URL:
 
 ```bash
 export INFRAI_API_KEY=your-key
@@ -14,13 +14,13 @@ npm install
 npm start
 ```
 
-The sample input is `donor-42`, `receipt-2026-001`, `application/pdf`, and `184320` bytes. The successful output includes a `PUT` URL and the key `receipts/donor-42/receipt-2026-001.pdf`. A browser can then run `fetch(uploadUrl, { method: "PUT", body: file })`.
+Sample input is `donor-42`, `receipt-2026-001`, `application/pdf`, and `184320` bytes. Output on success has a `PUT` URL and key `receipts/donor-42/receipt-2026-001.pdf`. Browser then runs `fetch(uploadUrl, { method: "PUT", body: file })`.
 
-`src/receipt_upload.ts` checks for `nonprofit-assets` and creates it with `storage.bucket.create` when the app is first connected. The presign request uses the bucket and object key as URL path segments and sends `op`, `expires_seconds`, `content_type`, `max_bytes`, and an idempotency key in its JSON body.
+`src/receipt_upload.ts` checks for `nonprofit-assets` and creates it with `storage.bucket.create` on first connect. Presign call puts bucket and object key in the path, sends `op`, `expires_seconds`, `content_type`, `max_bytes`, plus an idempotency key in the body.
 
 ## The business decision
 
-Receipts are PDFs capped at 10 MB. `receiptObjectKey` keeps donor files grouped by donor while making the receipt identifier explicit. The same shape can name volunteer reminder attachments or campaign report exports without putting file bytes through the application server.
+Receipts are PDFs, 10 MB cap. `receiptObjectKey` groups donor files while keeping the receipt id explicit. Same shape names volunteer reminders or campaign exports. No file bytes hit the app server.
 
 The focused check names its input and expected key. Run it with:
 
@@ -28,17 +28,17 @@ The focused check names its input and expected key. Run it with:
 npm test
 ```
 
-That test is local and deterministic. `npm start` is the minimal integration-style run and needs the environment key plus access to the storage API.
+That test is local, deterministic. `npm start` is the minimal integration run. Needs the env key and storage API access.
 
 ## Files
 
-`src/infrai.ts` is the small authenticated HTTP client. It reads the response envelope, surfaces API errors, and backs off on `429` responses. `src/receipt_upload.ts` owns the nonprofit receipt decision and the browser-facing result. There is no SDK layer to learn before copying the pattern.
+`src/infrai.ts` is the small authenticated HTTP client. Reads the response envelope, surfaces API errors, backs off on `429` responses. `src/receipt_upload.ts` owns the nonprofit receipt decision and browser-facing result. No SDK layer to learn before you copy the pattern.
 
 This repository is MIT licensed.
 
 ## Before this ships: Nonprofit Presigned Receipts
 
-Quick start is above. For a real deployment you'll also need: The details below apply to Nonprofit Presigned Receipts.
+Quick start is above. Real deployment also needs: details below apply to Nonprofit Presigned Receipts.
 
 **Account & key**
 
